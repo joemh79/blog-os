@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title data-cfg-title>Blog-OS</title>
+<meta name="description" data-cfg-attr="content:description" content="">
+<link rel="icon" type="image/svg+xml" href="/assets/favicon.svg">
+<link rel="stylesheet" href="/assets/style.css">
+<script src="/config.js"></script>
+</head>
+<body class="page">
+
+<div id="cross" aria-hidden="true" title="回到顶部">
+<svg viewBox="0 0 30 30"><path d="M15 5v20M5 15h20"/></svg>
+</div>
+
+<header class="topbar">
+<a class="brand" href="/"><span data-cfg="siteName">Blog</span> <span class="sec">/ guestbook</span></a>
+<a href="/">← 首页</a>
+</header>
+
+<main class="sheet">
+<a class="back" href="/">← <span data-cfg="siteName">Blog</span></a>
+<p class="label"><span class="n">✎</span>Guestbook · 留言板</p>
+<h1 class="page-title">GUESTBOOK</h1>
+<p class="page-sub">说点什么吧。</p>
+
+<form id="gb-form" class="gb-form" autocomplete="off">
+  <div class="gb-row">
+    <input id="gb-name" class="gb-input" type="text" maxlength="30" placeholder="昵称" aria-label="昵称">
+  </div>
+  <div class="gb-row">
+    <textarea id="gb-text" class="gb-input gb-area" rows="4" maxlength="500" placeholder="写点什么…（500 字以内）" aria-label="留言内容"></textarea>
+  </div>
+  <!-- 蜜罐：正常人看不见，机器人会填 -->
+  <input id="gb-website" class="gb-honey" type="text" tabindex="-1" aria-hidden="true">
+  <div class="gb-row gb-foot">
+    <button id="gb-submit" class="gb-btn" type="submit">留 言 →</button>
+    <span id="gb-status" class="gb-status" role="status"></span>
+  </div>
+</form>
+
+<h2 class="year" id="gb-count">留言</h2>
+<div id="gb-list" class="gb-list">
+  <p class="gb-empty">加载中…</p>
+</div>
+<button id="gb-more" class="gb-btn gb-more" type="button" hidden>更多留言 ↓</button>
+</main>
+
+<footer class="colophon">
+<span>© <span id="year">2026</span> <span data-cfg="siteName">Blog</span> · 已运行 <b><span id="days">1</span></b> 天</span>
+<span data-cfg="footer.motto"></span>
+</footer>
+
+<script src="/assets/main.js"></script>
+<script src="/assets/guestbook.js"></script>
+</body>
+</html>

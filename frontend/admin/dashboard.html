@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>管理后台</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" type="image/svg+xml" href="/assets/favicon.svg">
+<link rel="stylesheet" href="/assets/style.css">
+<script src="/config.js"></script>
+</head>
+<body class="admin">
+
+<div class="admin-wrap">
+  <div class="admin-top">
+    <h1>管理后台</h1>
+    <div>
+      <a class="btn ghost small" href="/" target="_blank" rel="noopener">查看前台 →</a>
+      <button class="btn ghost small" id="logout-btn">退出</button>
+    </div>
+  </div>
+
+  <div class="admin-tabs">
+    <button data-tab="posts" class="on">文章</button>
+    <button data-tab="editor">写文章</button>
+    <button data-tab="settings">设置</button>
+    <button data-tab="messages">留言</button>
+  </div>
+
+  <!-- 文章列表 -->
+  <section id="tab-posts" class="admin-card">
+    <h2>全部文章</h2>
+    <div id="post-list"><p class="gb-empty">加载中…</p></div>
+  </section>
+
+  <!-- 编辑器 -->
+  <section id="tab-editor" class="admin-card" hidden>
+    <h2 id="editor-title">写文章</h2>
+    <form id="editor-form" autocomplete="off">
+      <div class="ed-grid">
+        <div class="field"><label>标题</label><input id="f-title" required maxlength="120"></div>
+        <div class="field"><label>slug（URL，英文短横线）</label><input id="f-slug" required maxlength="120" pattern="[a-z0-9-]+"></div>
+      </div>
+      <div class="ed-grid">
+        <div class="field"><label>摘要</label><input id="f-excerpt" maxlength="200"></div>
+        <div class="field"><label>标签（逗号分隔）</label><input id="f-tags" maxlength="120"></div>
+      </div>
+      <div class="field">
+        <label>状态</label>
+        <select id="f-status">
+          <option value="draft">草稿</option>
+          <option value="published">发布</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>正文（Markdown）</label>
+        <textarea id="f-md" placeholder="# 标题&#10;&#10;正文…"></textarea>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <button class="btn" type="submit">保 存</button>
+        <button class="btn ghost" type="button" id="preview-btn">预览</button>
+        <button class="btn ghost" type="button" id="cancel-btn" hidden>取消编辑</button>
+      </div>
+      <p class="admin-err" id="editor-err"></p>
+      <div class="preview" id="preview-box" hidden></div>
+    </form>
+  </section>
+
+  <!-- 设置 -->
+  <section id="tab-settings" class="admin-card" hidden>
+    <h2>站点设置</h2>
+    <p style="color:var(--gray);font-size:14px;margin-bottom:16px">
+      这些设置通过 API 提供给前台（GET /api/settings）。基础个人信息建议直接改 config.js。
+    </p>
+    <div id="settings-list"></div>
+    <div class="kv">
+      <input id="s-key" placeholder="key，如 announcement">
+      <input id="s-value" placeholder="value">
+      <button class="btn small" id="s-add">添加</button>
+    </div>
+    <button class="btn" id="s-save">保存全部</button>
+    <p class="admin-err" id="settings-err"></p>
+  </section>
+
+  <!-- 留言 -->
+  <section id="tab-messages" class="admin-card" hidden>
+    <h2>留言管理</h2>
+    <div id="msg-list"><p class="gb-empty">加载中…</p></div>
+  </section>
+</div>
+
+<script src="/assets/main.js"></script>
+<script src="/assets/admin.js"></script>
+</body>
+</html>

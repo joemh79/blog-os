@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>登录 · 管理后台</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" type="image/svg+xml" href="/assets/favicon.svg">
+<link rel="stylesheet" href="/assets/style.css">
+<script src="/config.js"></script>
+</head>
+<body class="admin">
+
+<div class="admin-wrap">
+  <div class="admin-card admin-login">
+    <h1>管理后台</h1>
+    <p><span data-cfg="siteName">Blog</span> · 管理员登录</p>
+    <form id="login-form" autocomplete="off">
+      <div class="field">
+        <label for="username">用户名</label>
+        <input id="username" type="text" autocomplete="username" placeholder="admin">
+      </div>
+      <div class="field">
+        <label for="password">密码</label>
+        <input id="password" type="password" autocomplete="current-password" placeholder="••••••••">
+      </div>
+      <button class="btn" type="submit" style="width:100%">登 录 →</button>
+      <p class="admin-err" id="login-err"></p>
+    </form>
+  </div>
+</div>
+
+<script src="/assets/main.js"></script>
+<script src="/assets/admin.js"></script>
+</body>
+</html>

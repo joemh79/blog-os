@@ -1,0 +1,26 @@
+# Blog-OS 后端 · Cloudflare Worker 配置
+# 完整部署步骤见 docs/DEPLOY.md
+
+name = "blog-os-api"
+main = "src/index.js"
+compatibility_date = "2025-01-01"
+
+# D1 数据库：先创建再填 database_id
+#   wrangler d1 create blog-os-db
+[[d1_databases]]
+binding = "DB"
+database_name = "blog-os-db"
+database_id = "REPLACE_WITH_YOUR_D1_ID"
+
+# R2（可选）：用于 /api/upload 图片上传
+#   wrangler r2 bucket create blog-os-uploads
+# [[r2_buckets]]
+# binding = "R2"
+# bucket_name = "blog-os-uploads"
+
+[vars]
+ADMIN_USERNAME = "admin"
+# ADMIN_PASSWORD_HASH 和 TOKEN_SECRET 必须用 secret 设置，不要写在这里：
+#   echo -n "你的密码" | sha256sum | cut -d' ' -f1
+#   wrangler secret put ADMIN_PASSWORD_HASH
+#   wrangler secret put TOKEN_SECRET

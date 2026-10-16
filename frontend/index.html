@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title data-cfg-title>Blog-OS</title>
+<meta name="description" data-cfg-attr="content:description" content="">
+<link rel="icon" type="image/svg+xml" href="/assets/favicon.svg">
+<link rel="stylesheet" href="/assets/style.css">
+<script src="/config.js"></script>
+</head>
+<body>
+
+<div id="cross" aria-hidden="true" title="草图模式">
+<svg viewBox="0 0 30 30"><path d="M15 5v20M5 15h20"/></svg>
+</div>
+
+<header class="topbar">
+<a class="brand" href="/" data-cfg="siteName">Blog</a>
+<a href="/blog/">Blog →</a>
+</header>
+
+<div id="minimap" aria-hidden="true"></div>
+<div id="ghost" aria-hidden="true"></div>
+
+<div id="stage">
+
+  <!-- 01 · Hero -->
+  <section class="panel" id="p-hero">
+    <div class="panel-inner hero">
+      <div class="sun" aria-hidden="true"></div>
+      <p class="label"><span class="n">01</span><span data-cfg="siteName">Blog</span> · <span data-cfg="hero.label">个人网站</span></p>
+      <h1 class="giant" data-cfg-hero></h1>
+      <p class="bio" data-cfg-hero-bio></p>
+      <nav class="hero-links" data-cfg-hero-links></nav>
+      <div class="hero-foot">
+        <span>© <span class="js-year">2026</span> <span data-cfg="siteName">Blog</span></span>
+        <span>滚动 →</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- 02-04 · 主题面板由 config.themes 生成 -->
+  <span id="theme-panels" style="display:contents"></span>
+
+  <!-- 05 · About -->
+  <section class="panel" id="p-about">
+    <div class="panel-inner about">
+      <p class="label"><span class="n">03</span>About · <span data-cfg="about.label">关于</span></p>
+      <p class="about-lines" data-cfg-about></p>
+      <p class="about-sub" data-cfg="about.sub"></p>
+      <p class="about-days">已运行 <b><span id="days">1</span></b> 天，还在继续。</p>
+    </div>
+  </section>
+
+  <!-- 06 · Contact -->
+  <section class="panel" id="p-contact">
+    <div class="panel-inner contact">
+      <p class="label"><span class="n">04</span>Contact · <span data-cfg="contact.label">联系</span></p>
+      <div class="contact-center" data-cfg-contact>
+        <h2 class="big center"><span class="rl" style="--d:.05s"><span data-cfg="contact.title">Say hi.</span></span></h2>
+        <button class="copybtn u-dash" data-cfg-contact-email data-copy=""><span class="swap"><span class="t1"></span><span class="t2">Copied ✓</span></span></button>
+        <a class="u-dash gb-entry" data-cfg-gb href="/guestbook/">去留言板 →</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- 07 · Manifesto -->
+  <section class="panel mani" id="p-manifesto">
+    <div class="panel-inner">
+      <p class="label"><span class="n">05</span>Manifesto · <span data-cfg="manifesto.label">宣言</span></p>
+      <p class="mani-lines" data-cfg-manifesto></p>
+      <p class="mani-en"><span class="rl" style="--d:.5s"><span data-cfg-manifesto-en><span></span></span></span></p>
+      <div class="mani-foot">
+        <span>© <span class="js-year">2026</span> <span data-cfg="siteName">Blog</span></span>
+        <span data-cfg="email"></span>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<script src="/assets/main.js"></script>
+</body>
+</html>
