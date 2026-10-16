@@ -17,7 +17,7 @@ Here's the side hustle angle: setting up a personal blog with a real admin panel
 
 The blog system is live and open source. Here's what the admin panel looks like:
 
-🎥 **Video demo:** [demo video link]
+🎥 **Video demo:** `media-generation-blog-os-demo-0-a0c20653-1379-47e0-9e2a-3c55c0509fb0.mp4` (in repo root, upload to YouTube and embed)
 
 **Try it yourself:**
 - Frontend: Deploy `frontend/` to Cloudflare Pages (zero build step)
