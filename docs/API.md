@@ -83,6 +83,52 @@ Markdown 预览（管理后台编辑器用）。
 { "html": "<h1>hi</h1>" }
 ```
 
+## AI 写作助手
+
+> 通过本地 [Ollama](https://ollama.com) 调用 Gemma 等开源权重模型（open-weight），
+> 为文章生成摘要 / 推荐标签 / 生成标题。内容只发往你自己的 Ollama，不上传任何云端。
+>
+> 配置优先级：D1 `settings` 表（`ollama_base_url` / `ollama_model`）
+> ＞ 环境变量 `OLLAMA_BASE_URL` / `OLLAMA_MODEL`
+> ＞ 默认值（`http://localhost:11434` / `gemma3:4b`）。
+>
+> 注意：部署在 Cloudflare 上的 Worker 无法访问 `localhost`；
+> 本地 `wrangler dev` 或通过内网穿透把 Ollama 暴露出来时可用。
+> Ollama 不可用时返回 `503` + 中文说明。
+
+### POST /api/ai/excerpt 🔒
+
+```json
+// 请求
+{ "content": "# 标题\n\n正文 Markdown…" }
+// 成功 200
+{ "excerpt": "本文介绍了……" }
+// 正文为空 400
+{ "error": "content is required" }
+// Ollama 不可用 503
+{ "error": "AI 服务不可用：请确认已在本地运行 Ollama……" }
+```
+
+### POST /api/ai/tags 🔒
+
+```json
+// 请求
+{ "content": "# 标题\n\n正文 Markdown…" }
+// 成功 200（3-5 个标签）
+{ "tags": ["开源", "博客", "Cloudflare"] }
+```
+
+### POST /api/ai/title 🔒
+
+```json
+// 请求
+{ "content": "# 标题\n\n正文 Markdown…" }
+// 成功 200
+{ "title": "我用 Cloudflare 搭了个博客" }
+```
+
+管理后台「写文章」页有 ✨ AI 助手 按钮组，直接调用这三个接口并填入对应字段。
+
 ## 设置
 
 ### GET /api/settings（公开）
@@ -158,3 +204,4 @@ Markdown 预览（管理后台编辑器用）。
 | 413 | 文件过大 |
 | 429 | 限流 |
 | 501 | 功能未配置（如未绑 R2） |
+| 503 | AI 服务不可用（Ollama 没跑起来） |

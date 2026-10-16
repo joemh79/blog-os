@@ -19,6 +19,7 @@ A zero-build, self-hostable minimalist personal blog system.
 | 🎨 横向画廊首页 | BLOG / WORK / SITES 巨型主题词面板，桌面手机同一套布局 |
 | 📝 暖纸博客区 | 暖米底 + 衬线标题的阅读风格 |
 | ⚙️ 完整管理后台 | `/admin/`：登录、文章 CRUD（Markdown + 预览）、站点设置、留言管理 |
+| ✨ AI 写作助手 | 本地 Ollama + Gemma（开源权重）生成摘要 / 推荐标签 / 生成标题，内容不出本机 |
 | 🔧 全站可配置 | 个人信息全部在 `config.js`，换个文件就是你的博客 |
 | 💬 留言板 | 带蜜罐 + 限流防机器人 |
 | 🖼️ 图片上传 | 可选绑定 R2（`/api/upload`） |
@@ -90,6 +91,28 @@ wrangler deploy
 ### 4. 写文章
 
 访问 `你的域名/admin/` 登录，写文章 → 发布。
+
+### 5. AI 写作助手（可选，本地运行）
+
+管理后台写文章时，✨ AI 助手 可以调用**本地大模型**（开源权重，不上传云端）自动生成摘要、推荐标签、生成标题。
+
+```bash
+# 1. 安装 Ollama：https://ollama.com/download
+# 2. 拉取 Gemma 模型（Google 开源权重模型）
+ollama pull gemma3:4b
+# 3. 启动服务（默认监听 localhost:11434）
+ollama serve
+```
+
+原理：`POST /api/ai/*` → Worker 把正文发给 `OLLAMA_BASE_URL`
+（默认 `http://localhost:11434`）的 `/api/generate` → Gemma 生成中文结果。
+
+- **本地开发**（`wrangler dev`）：Worker 和 Ollama 都在同一台机器，直接可用。
+- **线上部署**：Cloudflare Worker 访问不到你电脑的 `localhost`，会返回 `503` +
+  中文提示；如需线上用，把 Ollama 通过内网穿透暴露出来，
+  再用环境变量 `OLLAMA_BASE_URL`（或后台「设置」里的 `ollama_base_url`）指向它，
+  模型用 `OLLAMA_MODEL` / `ollama_model` 改（默认 `gemma3:4b`）。
+- 不想用 AI？不用管，按钮点不动时会明确告诉你原因，不影响其他功能。
 
 ---
 

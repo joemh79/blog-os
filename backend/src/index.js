@@ -5,9 +5,16 @@
  *   ADMIN_USERNAME       管理员用户名（默认 admin）
  *   ADMIN_PASSWORD_HASH  管理员密码的 SHA-256 hex（必填，见 docs/DEPLOY.md 生成方法）
  *   TOKEN_SECRET         token 签名密钥（必填，随机字符串）
+ *   OLLAMA_BASE_URL      AI 助手用的 Ollama 地址（默认 http://localhost:11434）
+ *   OLLAMA_MODEL         AI 助手用的模型名（默认 gemma3:4b）
  * 绑定：
  *   DB   D1 数据库
  *   R2   （可选）图片存储桶，用于 /api/upload
+ *
+ * AI 写作助手：通过本地 Ollama 调用 Gemma 等开源权重模型。
+ * 配置优先级：D1 settings 表（ollama_base_url / ollama_model）> 环境变量 > 默认值。
+ * 注意：部署在 Cloudflare 上的 Worker 无法访问 localhost；
+ * 本地 wrangler dev 或通过内网穿透暴露 Ollama 时可用。
  *
  * 本地测试：node test/run.mjs（用 node:sqlite 模拟 D1）
  * ============================================================ */
@@ -177,8 +184,108 @@ function readingMinutes(md) {
   return Math.max(1, Math.round((words + cjk) / 300));
 }
 
+/* ————— AI 写作助手（Ollama 本地大模型，open-weight） ————— */
+
+const AI_TIMEOUT_MS = 30000;   // 单次调用 30 秒超时
+const AI_MAX_INPUT = 4000;     // 送给模型的正文上限（字符）
+
+async function aiConfig(env) {
+  let baseUrl = "";
+  let model = "";
+  try {
+    const b = await env.DB.prepare("SELECT value FROM settings WHERE key='ollama_base_url'").first();
+    const m = await env.DB.prepare("SELECT value FROM settings WHERE key='ollama_model'").first();
+    baseUrl = (b && b.value) || "";
+    model = (m && m.value) || "";
+  } catch { /* settings 表不可用时忽略，走环境变量 */ }
+  baseUrl = baseUrl || env.OLLAMA_BASE_URL || "http://localhost:11434";
+  model = model || env.OLLAMA_MODEL || "gemma3:4b";
+  return { baseUrl: baseUrl.replace(/\/+$/, ""), model };
+}
+
+function truncateInput(s) {
+  s = String(s || "").trim();
+  return s.length > AI_MAX_INPUT ? s.slice(0, AI_MAX_INPUT) + "\n…（内容过长已截断）" : s;
+}
+
+/* 纯函数：构造 prompt（导出供测试） */
+function buildExcerptPrompt(content) {
+  return (
+    "你是一个中文博客写作助手。请为以下博客文章生成一段中文摘要。\n" +
+    "要求：\n" +
+    "1. 50-100 字，只输出摘要正文\n" +
+    "2. 不要加引号、标题、前缀或任何解释\n" +
+    "3. 语言简洁，突出文章核心观点\n\n" +
+    "文章内容：\n---\n" + truncateInput(content) + "\n---"
+  );
+}
+
+function buildTagsPrompt(content) {
+  return (
+    "你是一个中文博客写作助手。请为以下博客文章推荐 3-5 个中文标签。\n" +
+    "要求：\n" +
+    "1. 每行只输出一个标签，不要加 # 号、序号或任何解释\n" +
+    "2. 每个标签 2-6 个字\n\n" +
+    "文章内容：\n---\n" + truncateInput(content) + "\n---"
+  );
+}
+
+function buildTitlePrompt(content) {
+  return (
+    "你是一个中文博客写作助手。请为以下博客文章生成一个中文标题。\n" +
+    "要求：\n" +
+    "1. 只输出标题本身，不要加引号、书名号或任何解释\n" +
+    "2. 20 字以内，简洁且有吸引力\n\n" +
+    "文章内容：\n---\n" + truncateInput(content) + "\n---"
+  );
+}
+
+/* 纯函数：解析模型返回的标签（按行/逗号切分，清洗，最多 5 个） */
+function parseTags(text) {
+  return String(text || "")
+    .split(/[\n,，、]/)
+    .map((t) => t.trim()
+      .replace(/^#+\s*/, "")
+      .replace(/^[0-9]+[.)、:：]\s*/, "")
+      .replace(/^["「『“]/, "")
+      .replace(/["」』”]$/, ""))
+    .filter((t) => t.length >= 1 && t.length <= 12)
+    .filter((t, i, arr) => arr.indexOf(t) === i)
+    .slice(0, 5);
+}
+
+const AI_UNAVAILABLE =
+  "AI 服务不可用：请确认已在本地运行 Ollama（ollama serve）并已拉取模型（ollama pull gemma3:4b）；" +
+  "线上部署的 Worker 无法访问 localhost，可通过环境变量 OLLAMA_BASE_URL 指向可访问的 Ollama 地址";
+
+/* 调用 Ollama /api/generate；fetchFn 可注入，便于测试时 mock */
+async function callOllama(env, prompt, fetchFn) {
+  const { baseUrl, model } = await aiConfig(env);
+  const fn = fetchFn || fetch;
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), AI_TIMEOUT_MS);
+  try {
+    const res = await fn(baseUrl + "/api/generate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ model, prompt, stream: false }),
+      signal: ctrl.signal,
+    });
+    if (!res.ok) throw new Error("ollama status " + res.status);
+    const data = await res.json();
+    const text = data && data.response ? String(data.response).trim() : "";
+    if (!text) throw new Error("empty response");
+    return text;
+  } catch (e) {
+    if (e && e.name === "AbortError") throw new Error("timeout");
+    throw e;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 /* 导出给本地工具（seed 生成 / 测试）复用；Worker 运行时只用 default */
-export { mdToHtml, mdInline, sha256hex };
+export { mdToHtml, mdInline, sha256hex, buildExcerptPrompt, buildTagsPrompt, buildTitlePrompt, parseTags, callOllama };
 
 /* ————— 路由 ————— */
 
@@ -222,6 +329,45 @@ async function route(req, env, url, path) {
     if (!(await requireAuth(req, env))) return err("unauthorized", 401);
     const { md } = await body();
     return json({ html: mdToHtml(md || "") });
+  }
+
+  /* —— AI 写作助手（需登录；依赖本地 Ollama + Gemma 等开源模型） —— */
+  if (path === "/api/ai/excerpt" && method === "POST") {
+    if (!(await requireAuth(req, env))) return err("unauthorized", 401);
+    const { content } = await body();
+    if (!content || !String(content).trim()) return err("content is required", 400);
+    try {
+      const text = await callOllama(env, buildExcerptPrompt(content));
+      return json({ excerpt: text.replace(/\s+/g, " ").trim().slice(0, 200) });
+    } catch {
+      return err(AI_UNAVAILABLE, 503);
+    }
+  }
+
+  if (path === "/api/ai/tags" && method === "POST") {
+    if (!(await requireAuth(req, env))) return err("unauthorized", 401);
+    const { content } = await body();
+    if (!content || !String(content).trim()) return err("content is required", 400);
+    try {
+      const text = await callOllama(env, buildTagsPrompt(content));
+      return json({ tags: parseTags(text) });
+    } catch {
+      return err(AI_UNAVAILABLE, 503);
+    }
+  }
+
+  if (path === "/api/ai/title" && method === "POST") {
+    if (!(await requireAuth(req, env))) return err("unauthorized", 401);
+    const { content } = await body();
+    if (!content || !String(content).trim()) return err("content is required", 400);
+    try {
+      const text = await callOllama(env, buildTitlePrompt(content));
+      const title = text.split("\n")[0].trim()
+        .replace(/^["「『“]/, "").replace(/["」』”]$/, "").slice(0, 60);
+      return json({ title });
+    } catch {
+      return err(AI_UNAVAILABLE, 503);
+    }
   }
 
   /* —— 认证 —— */

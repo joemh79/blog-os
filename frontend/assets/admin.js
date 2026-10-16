@@ -168,6 +168,8 @@
     document.getElementById("cancel-btn").hidden = true;
     document.getElementById("preview-box").hidden = true;
     document.getElementById("editor-err").textContent = "";
+    var aiSt = document.getElementById("ai-status");
+    if (aiSt) aiSt.textContent = "";
   }
 
   // slug 自动生成
@@ -194,6 +196,53 @@
       })
       .catch(function () { box.innerHTML = "<p>预览失败</p>"; box.hidden = false; });
   });
+
+  /* —— AI 写作助手（本地 Ollama + Gemma，不上传云端） —— */
+  var aiBtnIds = ["ai-excerpt-btn", "ai-tags-btn", "ai-title-btn"];
+  var aiStatus = document.getElementById("ai-status");
+  function setAiBusy(busy, msg) {
+    aiBtnIds.forEach(function (id) {
+      var b = document.getElementById(id);
+      if (b) b.disabled = busy;
+    });
+    if (aiStatus) aiStatus.textContent = msg || "";
+  }
+  function clearAiStatusSoon() {
+    setTimeout(function () {
+      if (aiStatus && /✓$/.test(aiStatus.textContent)) aiStatus.textContent = "";
+    }, 3000);
+  }
+  function aiAssist(kind) {
+    var md = document.getElementById("f-md").value.trim();
+    if (!md) { setAiBusy(false, "请先在正文写点内容"); return; }
+    setAiBusy(true, "AI 生成中…（最长 30 秒）");
+    authedFetch("/ai/" + kind, {
+      method: "POST",
+      body: JSON.stringify({ content: md })
+    }).then(function (r) {
+      return r.json().then(function (d) { return { ok: r.ok, data: d }; });
+    }).then(function (res) {
+      if (!res.ok) throw new Error((res.data && res.data.error) || "生成失败");
+      if (kind === "excerpt") {
+        document.getElementById("f-excerpt").value = res.data.excerpt || "";
+        setAiBusy(false, "摘要已填入 ✓");
+      } else if (kind === "tags") {
+        document.getElementById("f-tags").value = (res.data.tags || []).join(",");
+        setAiBusy(false, "标签已填入 ✓");
+      } else if (kind === "title") {
+        document.getElementById("f-title").value = res.data.title || "";
+        setAiBusy(false, "标题已填入 ✓");
+      }
+      clearAiStatusSoon();
+    }).catch(function (e) {
+      setAiBusy(false, e.message || "生成失败");
+    });
+  }
+  if (document.getElementById("ai-excerpt-btn")) {
+    document.getElementById("ai-excerpt-btn").addEventListener("click", function () { aiAssist("excerpt"); });
+    document.getElementById("ai-tags-btn").addEventListener("click", function () { aiAssist("tags"); });
+    document.getElementById("ai-title-btn").addEventListener("click", function () { aiAssist("title"); });
+  }
 
   document.getElementById("editor-form").addEventListener("submit", function (e) {
     e.preventDefault();

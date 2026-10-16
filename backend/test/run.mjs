@@ -5,7 +5,7 @@ import { DatabaseSync } from "node:sqlite";
 import { readFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import worker, { sha256hex } from "../src/index.js";
+import worker, { sha256hex, buildExcerptPrompt, buildTagsPrompt, buildTitlePrompt, parseTags, callOllama } from "../src/index.js";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const sqlite = new DatabaseSync(":memory:");
@@ -191,6 +191,110 @@ console.log("— Markdown 渲染 —");
     h.includes("<pre><code>") && h.includes('<img src="/x.png"') && h.includes('<a href="https://e.com"'));
   const xss = await call("POST", "/api/render", { token: TOKEN, body: { md: "<script>alert(1)</script>" } });
   check("HTML 转义防 XSS", !xss.data.html.includes("<script>") && xss.data.html.includes("&lt;script&gt;"));
+}
+
+console.log("— AI 写作助手 —");
+{
+  // prompt 构造（纯函数）
+  const p1 = buildExcerptPrompt("测试内容 hello");
+  check("摘要 prompt 包含正文", p1.includes("测试内容 hello") && p1.includes("摘要"));
+  const p2 = buildTagsPrompt("测试内容");
+  check("标签 prompt 包含正文", p2.includes("测试内容") && p2.includes("标签"));
+  const p3 = buildTitlePrompt("测试内容");
+  check("标题 prompt 包含正文", p3.includes("测试内容") && p3.includes("标题"));
+  const long = "a".repeat(5000);
+  check("超长正文被截断", buildExcerptPrompt(long).length < long.length + 200);
+
+  // 标签解析（纯函数）
+  check("parseTags 按行切分",
+    JSON.stringify(parseTags("开源\n博客\n云")) === '["开源","博客","云"]');
+  check("parseTags 去 # 号/序号/引号",
+    JSON.stringify(parseTags("#开源\n1. 博客\n2. 云\n“测试”")) === '["开源","博客","云","测试"]');
+  check("parseTags 去重并上限 5 个",
+    JSON.stringify(parseTags("a\na\nb\nc\nd\ne\nf")) === '["a","b","c","d","e"]');
+  check("parseTags 逗号切分",
+    JSON.stringify(parseTags("开源,博客，云")) === '["开源","博客","云"]');
+  check("parseTags 空输入 → []",
+    JSON.stringify(parseTags("")) === "[]");
+
+  // callOllama：mock fetch
+  const mockFetch = async (url, opts) => {
+    const body = JSON.parse(opts.body);
+    if (!(url.endsWith("/api/generate") && body.model === "gemma3:4b" && body.stream === false && body.prompt === "hi"))
+      throw new Error("unexpected request: " + url + " " + opts.body);
+    return { ok: true, json: async () => ({ response: "  mock 摘要  " }) };
+  };
+  const t = await callOllama(env, "hi", mockFetch);
+  check("callOllama 走 /api/generate 并 trim 返回", t === "mock 摘要");
+
+  const httpErrFetch = async () => ({ ok: false, status: 500, json: async () => ({}) });
+  let httpErr = false;
+  try { await callOllama(env, "hi", httpErrFetch); } catch { httpErr = true; }
+  check("Ollama 非 200 → 抛错", httpErr);
+
+  const abortFetch = async () => { const e = new Error("x"); e.name = "AbortError"; throw e; };
+  let timedOut = false;
+  try { await callOllama(env, "hi", abortFetch); } catch (e) { timedOut = e.message === "timeout"; }
+  check("AbortError → timeout", timedOut);
+
+  // 路由：鉴权与参数
+  const noAuth = await call("POST", "/api/ai/excerpt", { body: { content: "x" } });
+  check("AI 未登录 → 401", noAuth.status === 401);
+  const noContent = await call("POST", "/api/ai/tags", { token: TOKEN, body: {} });
+  check("AI 无正文 → 400", noContent.status === 400);
+  const noContent2 = await call("POST", "/api/ai/title", { token: TOKEN, body: { content: "   " } });
+  check("AI 空白正文 → 400", noContent2.status === 400);
+
+  // 路由：Ollama 不可达 → 503 中文友好错误（127.0.0.1:1 拒绝连接，立即失败）
+  const envNoOllama = { ...env, OLLAMA_BASE_URL: "http://127.0.0.1:1" };
+  async function callNoOllama(path) {
+    const req = new Request("https://test.local" + path, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": "Bearer " + TOKEN },
+      body: JSON.stringify({ content: "测试正文" }),
+    });
+    const res = await worker.fetch(req, envNoOllama);
+    return { status: res.status, data: await res.json() };
+  }
+  for (const p of ["/api/ai/excerpt", "/api/ai/tags", "/api/ai/title"]) {
+    const r = await callNoOllama(p);
+    check(p + " 不可达 → 503", r.status === 503);
+    check(p + " 503 带中文说明", typeof r.data.error === "string" && r.data.error.includes("Ollama"));
+  }
+
+  // 路由：mock Ollama HTTP 服务器 → 全链路成功
+  const { createServer } = await import("node:http");
+  const srv = createServer((req, res) => {
+    let buf = "";
+    req.on("data", (c) => { buf += c; });
+    req.on("end", () => {
+      const b = JSON.parse(buf);
+      // 注意：摘要 prompt 里也有"标题"二字（作为否定要求），用完整短语区分
+      const kind = b.prompt.includes("推荐 3-5 个中文标签") ? "tags"
+        : b.prompt.includes("生成一个中文标题") ? "title" : "excerpt";
+      const resp = kind === "tags" ? "开源\n博客\n云" : kind === "title" ? "  测试标题  " : "  这是一段测试摘要。  ";
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ response: resp }));
+    });
+  });
+  await new Promise((r) => srv.listen(0, "127.0.0.1", r));
+  const envMock = { ...env, OLLAMA_BASE_URL: "http://127.0.0.1:" + srv.address().port };
+  async function callMock(path) {
+    const req = new Request("https://test.local" + path, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": "Bearer " + TOKEN },
+      body: JSON.stringify({ content: "正文内容" }),
+    });
+    const res = await worker.fetch(req, envMock);
+    return { status: res.status, data: await res.json() };
+  }
+  const e1 = await callMock("/api/ai/excerpt");
+  check("mock 摘要 → 200 + trim", e1.status === 200 && e1.data.excerpt === "这是一段测试摘要。");
+  const e2 = await callMock("/api/ai/tags");
+  check("mock 标签 → 200 + 解析", e2.status === 200 && JSON.stringify(e2.data.tags) === '["开源","博客","云"]');
+  const e3 = await callMock("/api/ai/title");
+  check("mock 标题 → 200 + trim", e3.status === 200 && e3.data.title === "测试标题");
+  srv.close();
 }
 
 console.log("— 其他 —");

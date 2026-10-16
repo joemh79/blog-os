@@ -56,6 +56,14 @@
         <label>正文（Markdown）</label>
         <textarea id="f-md" placeholder="# 标题&#10;&#10;正文…"></textarea>
       </div>
+      <div class="ai-bar">
+        <span class="ai-label">✨ AI 助手</span>
+        <button class="btn ghost small" type="button" id="ai-excerpt-btn">生成摘要</button>
+        <button class="btn ghost small" type="button" id="ai-tags-btn">推荐标签</button>
+        <button class="btn ghost small" type="button" id="ai-title-btn">生成标题</button>
+        <span class="ai-status" id="ai-status"></span>
+      </div>
+      <p class="ai-hint">AI 助手调用本地 Ollama 的 Gemma 模型（开源权重），正文不会上传到任何云端。需先在本地运行 Ollama，见 README 说明。</p>
       <div style="display:flex;gap:10px;flex-wrap:wrap">
         <button class="btn" type="submit">保 存</button>
         <button class="btn ghost" type="button" id="preview-btn">预览</button>
