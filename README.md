@@ -38,7 +38,7 @@ blog-os/
 │   ├── config.example.js   # 配置模板
 │   ├── blog/               # 博客列表 + 文章页（从 API 动态加载）
 │   ├── work/ sites/        # 作品 / 站点（config 驱动）
-│   ├── guestbook/         # 留言板
+│   ├── guestbook/          # 留言板
 │   ├── admin/              # 管理后台（登录 + 仪表盘 SPA）
 │   └── assets/             # style.css / main.js / blog.js / admin.js / fonts
 ├── backend/                # 后台（Cloudflare Worker + D1，单文件）
