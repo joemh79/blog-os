@@ -6,7 +6,7 @@
 
 A zero-build, self-hostable minimalist personal blog system.
 
-[快速开始](#快速开始--quick-start) · [部署指南](docs/DEPLOY.md) · [API 文档](docs/API.md)
+[快速开始](#快速开始--quick-start) · [部署指南](docs/DEPLOY.md) · [API 文档](docs/API.md) · [在线演示](https://tianx.tech)
 
 </div>
 
@@ -38,7 +38,7 @@ blog-os/
 │   ├── config.example.js   # 配置模板
 │   ├── blog/               # 博客列表 + 文章页（从 API 动态加载）
 │   ├── work/ sites/        # 作品 / 站点（config 驱动）
-│   ├── guestbook/          # 留言板
+│   ├── guestbook/         # 留言板
 │   ├── admin/              # 管理后台（登录 + 仪表盘 SPA）
 │   └── assets/             # style.css / main.js / blog.js / admin.js / fonts
 ├── backend/                # 后台（Cloudflare Worker + D1，单文件）
